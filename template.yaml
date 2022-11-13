@@ -1,0 +1,49 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template is to create all resources for Config Service Api
+Parameters:
+  LambdaArtifactBucketName:
+    Type: String
+    Default: befit-artifact
+  S3BucketName:
+    Type: String
+    Default: befit-test-s3
+Resources:
+  ExampleS3:
+    Type: AWS::S3::Bucket
+    DependsOn: ExampleInvokePermission
+    Properties:
+      BucketName: !Ref S3BucketName
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:Put
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: txt
+            Function: !GetAtt [ ExampleLambdaFunction, Arn]
+  ExampleInvokePermission:
+    Type: AWS::Lambda::Permission
+    DependsOn: ExampleLambdaFunction
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+          - ExampleLambdaFunction
+          - Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn:
+        Fn::Sub: arn:aws:s3:::${S3BucketName}
+  ExampleLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: LambdaArtifactBucketName
+        S3Key: emailnotification-1.0.0.jar
+      FunctionName: example-lambda-function
+      Handler: com.xxx.Example::handleRequest
+      Runtime: java8
+      Timeout: '300'
+      MemorySize: 512
